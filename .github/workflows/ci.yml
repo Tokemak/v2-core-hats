@@ -1,0 +1,91 @@
+name: "CI"
+
+on:
+  workflow_dispatch:
+    branches:
+      - "*"
+  pull_request:
+    branches:
+      - "*"
+  push:
+    branches:
+      - "main"
+
+jobs:
+  ci:
+    runs-on: "ubuntu-latest-m"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          persist-credentials: false
+          fetch-depth: 0
+
+      - name: Install Foundry
+        uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: nightly-293fad73670b7b59ca901c7f2105bf7a29165a90
+
+      - name: Install NodeJS
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build package
+        run: forge build --build-info --skip test script
+
+      - name: Run Slither
+        uses: crytic/slither-action@v0.3.0
+        with:
+          ignore-compile: true
+          fail-on: all
+          solc-version: 0.8.17
+          slither-version: 0.10.0
+          node-version: 20
+
+      - name: Lint commits - PR
+        run: npx commitlint --from ${{ github.event.pull_request.base.sha }} --to ${{ github.event.pull_request.head.sha }} --verbose
+        if: github.event_name == 'pull_request'
+
+      - name: Lint commits - Push
+        run: echo "$(git log -1 --format='%s')" | npx commitlint
+        if: github.event_name != 'pull_request'
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Formatting
+        run: npm run format:verify
+
+      - name: "Generate fuzz seed"
+        run: echo "FOUNDRY_FUZZ_SEED=$(echo $(($EPOCHSECONDS - $EPOCHSECONDS % 604800)))" >> $GITHUB_ENV
+
+      - name: Run tests
+        env:
+          MAINNET_RPC_URL: ${{ secrets.MAINNET_RPC_URL }}
+          OPTIMISM_MAINNET_RPC_URL: ${{ secrets.OPTIMISM_MAINNET_RPC_URL }}
+          ARBITRUM_MAINNET_RPC_URL: ${{ secrets.ARBITRUM_MAINNET_RPC_URL }}
+        run: npm run test
+
+      - name: Scan for secrets
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITLEAKS_LICENSE: ${{ secrets.GITLEAKS_LICENSE}} # Only required for Organizations, not personal accounts.
+
+      # - name: "Check that the contracts are each under 24kB"
+      #   run: |
+      #     forge --version
+      #     forge build --sizes
+
+      - name: Publish Release
+        run: npx semantic-release
+        env:
+          GH_TOKEN: ${{ secrets.GH_TOKEN }}
+          NPM_TOKEN: ${{ secrets.GH_TOKEN }}
+        if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}

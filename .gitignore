@@ -1,0 +1,20 @@
+local/
+cache/
+broadcast/
+out/
+.env
+.vscode
+
+.DS_Store
+node_modules/
+
+lcov.info
+coverage
+bin
+
+# hardhat
+artifacts/
+cache_hardhat/
+typechain-types/
+
+crytic-export/
