@@ -78,14 +78,15 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITLEAKS_LICENSE: ${{ secrets.GITLEAKS_LICENSE}} # Only required for Organizations, not personal accounts.
 
+
       # - name: "Check that the contracts are each under 24kB"
       #   run: |
       #     forge --version
       #     forge build --sizes
 
-      - name: Publish Release
-        run: npx semantic-release
-        env:
-          GH_TOKEN: ${{ secrets.GH_TOKEN }}
-          NPM_TOKEN: ${{ secrets.GH_TOKEN }}
-        if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+      # - name: Publish Release
+      #   run: npx semantic-release
+      #   env:
+      #     GH_TOKEN: ${{ secrets.GH_TOKEN }}
+      #     NPM_TOKEN: ${{ secrets.GH_TOKEN }}
+      #   if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
